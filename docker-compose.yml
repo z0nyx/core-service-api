@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: core-backend-api
+    env_file:
+      - .env.example
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+
+  db:
+    image: postgres:17-alpine
+    container_name: core-postgres
+    environment:
+      POSTGRES_DB: core_backend
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8-alpine
+    container_name: core-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  pg_data:
+  redis_data:
