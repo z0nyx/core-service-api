@@ -5,9 +5,11 @@ import { APP_GUARD } from "@nestjs/core";
 import { HealthController } from "./health.controller";
 import { PrismaService } from "./prisma.service";
 import { REDIS_CLIENT, redisProvider } from "./redis.provider";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
+    AuthModule,
     ConfigModule.forRoot({
       isGlobal: true
     }),
