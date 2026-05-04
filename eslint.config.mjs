@@ -24,5 +24,16 @@ export default [
       ...tsPlugin.configs.recommended.rules
     }
   },
+  {
+    files: ["src/**/*.spec.ts"],
+    languageOptions: {
+      globals: {
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+        jest: "readonly"
+      }
+    }
+  },
   prettier
 ];
