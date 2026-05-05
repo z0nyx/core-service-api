@@ -1,4 +1,4 @@
-import js from "@eslint/js";
+﻿import js from "@eslint/js";
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import prettier from "eslint-config-prettier";
@@ -25,13 +25,15 @@ export default [
     }
   },
   {
-    files: ["src/**/*.spec.ts"],
+    files: ["src/**/*.spec.ts", "src/**/*.e2e-spec.ts"],
     languageOptions: {
       globals: {
         describe: "readonly",
         it: "readonly",
         expect: "readonly",
-        jest: "readonly"
+        jest: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly"
       }
     }
   },

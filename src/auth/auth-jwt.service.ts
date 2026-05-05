@@ -1,4 +1,5 @@
-﻿import { Injectable, UnauthorizedException } from "@nestjs/common";
+﻿import { randomUUID } from "crypto";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import jwt, { type JwtPayload as JwtPayloadBase, type SignOptions } from "jsonwebtoken";
 
@@ -21,7 +22,8 @@ export class AuthJwtService {
 
     return jwt.sign(payload, secret, {
       algorithm: "HS256",
-      expiresIn
+      expiresIn,
+      jwtid: randomUUID()
     } as SignOptions);
   }
 
@@ -40,7 +42,8 @@ export class AuthJwtService {
 
     return jwt.sign(payload, secret, {
       algorithm: "HS256",
-      expiresIn
+      expiresIn,
+      jwtid: randomUUID()
     } as SignOptions);
   }
 
