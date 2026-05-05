@@ -74,4 +74,9 @@ export class AuthController {
   logout(@Body() body: RefreshTokenDto) {
     return this.authRefreshTokenService.logoutSingleSession(body.refreshToken);
   }
+
+  @Post("token/logout-all")
+  logoutAll(@Body() body: RefreshTokenDto) {
+    return this.authRefreshTokenService.logoutAllSessions(body.refreshToken);
+  }
 }

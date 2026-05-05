@@ -115,4 +115,23 @@ export class AuthRefreshTokenService {
       success: true
     };
   }
+
+  async logoutAllSessions(refreshToken: string) {
+    const refreshPayload = this.authJwtService.verifyRefreshToken(refreshToken);
+
+    const result = await this.prismaService.refreshToken.updateMany({
+      where: {
+        userId: refreshPayload.sub,
+        revokedAt: null
+      },
+      data: {
+        revokedAt: new Date()
+      }
+    });
+
+    return {
+      success: true,
+      revokedCount: result.count
+    };
+  }
 }
