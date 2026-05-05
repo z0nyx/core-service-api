@@ -1,7 +1,9 @@
 ﻿import { Body, Controller, Get, Post } from "@nestjs/common";
 import { AuthJwtService } from "./auth-jwt.service";
+import { AuthRefreshTokenService } from "./auth-refresh-token.service";
 import { IssueTokenDto } from "./dto/issue-token.dto";
 import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { VerifyTokenDto } from "./dto/verify-token.dto";
 import { PasswordHashingService } from "./password-hashing.service";
@@ -10,7 +12,8 @@ import { PasswordHashingService } from "./password-hashing.service";
 export class AuthController {
   constructor(
     private readonly passwordHashingService: PasswordHashingService,
-    private readonly authJwtService: AuthJwtService
+    private readonly authJwtService: AuthJwtService,
+    private readonly authRefreshTokenService: AuthRefreshTokenService
   ) {}
 
   @Get("health")
@@ -47,14 +50,10 @@ export class AuthController {
 
   @Post("token/issue")
   issueToken(@Body() body: IssueTokenDto) {
-    const token = this.authJwtService.issueToken({
+    return this.authRefreshTokenService.issueTokenPair({
       sub: body.userId ?? body.email,
       email: body.email
     });
-
-    return {
-      token
-    };
   }
 
   @Post("token/verify")
@@ -64,5 +63,10 @@ export class AuthController {
     return {
       payload
     };
+  }
+
+  @Post("token/refresh")
+  refreshToken(@Body() body: RefreshTokenDto) {
+    return this.authRefreshTokenService.rotate(body.refreshToken);
   }
 }
