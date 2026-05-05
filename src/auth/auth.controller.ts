@@ -1,4 +1,5 @@
 ﻿import { Body, Controller, Get, Post } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { AuthJwtService } from "./auth-jwt.service";
 import { AuthRefreshTokenService } from "./auth-refresh-token.service";
 import { IssueTokenDto } from "./dto/issue-token.dto";
@@ -37,6 +38,12 @@ export class AuthController {
   }
 
   @Post("login")
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 60_000
+    }
+  })
   async login(@Body() body: LoginDto) {
     const passwordHash = await this.passwordHashingService.hash(body.password);
     const isPasswordValid = await this.passwordHashingService.verify(passwordHash, body.password);
