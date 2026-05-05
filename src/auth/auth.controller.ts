@@ -69,4 +69,9 @@ export class AuthController {
   refreshToken(@Body() body: RefreshTokenDto) {
     return this.authRefreshTokenService.rotate(body.refreshToken);
   }
+
+  @Post("token/logout")
+  logout(@Body() body: RefreshTokenDto) {
+    return this.authRefreshTokenService.logoutSingleSession(body.refreshToken);
+  }
 }

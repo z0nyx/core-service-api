@@ -77,4 +77,42 @@ export class AuthRefreshTokenService {
       email: refreshPayload.email
     });
   }
+
+  async logoutSingleSession(refreshToken: string) {
+    const refreshPayload = this.authJwtService.verifyRefreshToken(refreshToken);
+
+    const activeTokens = await this.prismaService.refreshToken.findMany({
+      where: {
+        userId: refreshPayload.sub,
+        revokedAt: null
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 20
+    });
+
+    let matchedTokenId: string | null = null;
+
+    for (const tokenRecord of activeTokens) {
+      const isMatch = await this.passwordHashingService.verify(tokenRecord.tokenHash, refreshToken);
+      if (isMatch) {
+        matchedTokenId = tokenRecord.id;
+        break;
+      }
+    }
+
+    if (!matchedTokenId) {
+      throw new UnauthorizedException("Refresh token is invalid");
+    }
+
+    await this.prismaService.refreshToken.update({
+      where: { id: matchedTokenId },
+      data: { revokedAt: new Date() }
+    });
+
+    return {
+      success: true
+    };
+  }
 }
