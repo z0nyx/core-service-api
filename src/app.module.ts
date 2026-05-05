@@ -6,10 +6,12 @@ import { HealthController } from "./health.controller";
 import { PrismaService } from "./prisma.service";
 import { REDIS_CLIENT, redisProvider } from "./redis.provider";
 import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
     AuthModule,
+    UsersModule,
     ConfigModule.forRoot({
       isGlobal: true
     }),
