@@ -1,13 +1,22 @@
 ﻿import { Module } from "@nestjs/common";
+import { redisProvider } from "../redis.provider";
 import { PrismaService } from "../prisma.service";
 import { AuthController } from "./auth.controller";
 import { AuthJwtService } from "./auth-jwt.service";
 import { AuthRefreshTokenService } from "./auth-refresh-token.service";
+import { AuthSecurityService } from "./auth-security.service";
 import { PasswordHashingService } from "./password-hashing.service";
 
 @Module({
   controllers: [AuthController],
-  providers: [PrismaService, PasswordHashingService, AuthJwtService, AuthRefreshTokenService],
-  exports: [PasswordHashingService, AuthJwtService, AuthRefreshTokenService]
+  providers: [
+    redisProvider,
+    PrismaService,
+    PasswordHashingService,
+    AuthJwtService,
+    AuthRefreshTokenService,
+    AuthSecurityService
+  ],
+  exports: [PasswordHashingService, AuthJwtService, AuthRefreshTokenService, AuthSecurityService]
 })
 export class AuthModule {}

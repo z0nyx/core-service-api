@@ -1,7 +1,10 @@
-﻿import { Body, Controller, Get, Post } from "@nestjs/common";
+﻿import { Body, Controller, Get, Inject, Post, UnauthorizedException } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import type Redis from "ioredis";
+import { REDIS_CLIENT } from "../redis.provider";
 import { AuthJwtService } from "./auth-jwt.service";
 import { AuthRefreshTokenService } from "./auth-refresh-token.service";
+import { AuthSecurityService } from "./auth-security.service";
 import { IssueTokenDto } from "./dto/issue-token.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -12,9 +15,11 @@ import { PasswordHashingService } from "./password-hashing.service";
 @Controller("auth")
 export class AuthController {
   constructor(
+    @Inject(REDIS_CLIENT) private readonly redisClient: Redis,
     private readonly passwordHashingService: PasswordHashingService,
     private readonly authJwtService: AuthJwtService,
-    private readonly authRefreshTokenService: AuthRefreshTokenService
+    private readonly authRefreshTokenService: AuthRefreshTokenService,
+    private readonly authSecurityService: AuthSecurityService
   ) {}
 
   @Get("health")
@@ -28,12 +33,12 @@ export class AuthController {
   @Post("register")
   async register(@Body() body: RegisterDto) {
     const passwordHash = await this.passwordHashingService.hash(body.password);
+    await this.redisClient.set(`auth:user:password:${body.email.toLowerCase()}`, passwordHash);
 
     return {
       action: "register",
       email: body.email,
-      name: body.name,
-      passwordHash
+      name: body.name
     };
   }
 
@@ -45,14 +50,27 @@ export class AuthController {
     }
   })
   async login(@Body() body: LoginDto) {
-    const passwordHash = await this.passwordHashingService.hash(body.password);
-    const isPasswordValid = await this.passwordHashingService.verify(passwordHash, body.password);
+    const loginKey = body.email.toLowerCase();
+    await this.authSecurityService.ensureLoginNotLocked(loginKey);
 
-    return {
-      action: "login",
-      email: body.email,
-      isPasswordValid
-    };
+    const storedPasswordHash = await this.redisClient.get(`auth:user:password:${loginKey}`);
+    if (!storedPasswordHash) {
+      await this.authSecurityService.recordLoginFailure(loginKey);
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    const isPasswordValid = await this.passwordHashingService.verify(storedPasswordHash, body.password);
+    if (!isPasswordValid) {
+      await this.authSecurityService.recordLoginFailure(loginKey);
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    await this.authSecurityService.clearLoginFailures(loginKey);
+
+    return this.authRefreshTokenService.issueTokenPair({
+      sub: body.email,
+      email: body.email
+    });
   }
 
   @Post("token/issue")
