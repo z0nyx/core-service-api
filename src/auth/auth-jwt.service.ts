@@ -1,7 +1,7 @@
 ﻿import { randomUUID } from "crypto";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import jwt, { type JwtPayload as JwtPayloadBase, type SignOptions } from "jsonwebtoken";
+import jwt, { JsonWebTokenError, TokenExpiredError, type JwtPayload as JwtPayloadBase, type SignOptions } from "jsonwebtoken";
 
 type JwtPayload = {
   sub: string;
@@ -52,27 +52,42 @@ export class AuthJwtService {
   }
 
   private verifyWithSecret(token: string, secretKey: string, fallbackSecret: string): VerifiedJwtPayload {
+    if (!token || typeof token !== "string" || token.trim().length === 0) {
+      throw new UnauthorizedException("Token is missing");
+    }
+
     const secret = this.configService.get<string>(secretKey) ?? fallbackSecret;
 
     try {
-      const decoded = jwt.verify(token, secret);
+      const decoded = jwt.verify(token.trim(), secret);
       if (typeof decoded === "string") {
         throw new UnauthorizedException("Invalid token payload");
       }
 
       const payload = decoded as JwtPayloadBase;
+      const sub = typeof payload.sub === "string" ? payload.sub.trim() : "";
+      const email = typeof payload.email === "string" ? payload.email.trim() : "";
 
-      if (!payload.sub || !payload.email || typeof payload.exp !== "number") {
+      if (!sub || !email || typeof payload.exp !== "number") {
         throw new UnauthorizedException("Invalid token payload");
       }
 
       return {
-        sub: String(payload.sub),
-        email: String(payload.email),
+        sub,
+        email,
         exp: payload.exp
       };
-    } catch {
-      throw new UnauthorizedException("Invalid or expired token");
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      if (error instanceof TokenExpiredError) {
+        throw new UnauthorizedException("Token expired");
+      }
+      if (error instanceof JsonWebTokenError) {
+        throw new UnauthorizedException("Invalid token");
+      }
+      throw new UnauthorizedException("Invalid token");
     }
   }
 }

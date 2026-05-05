@@ -38,34 +38,7 @@ export class AuthRefreshTokenService {
 
   async rotate(refreshToken: string) {
     const refreshPayload = this.authJwtService.verifyRefreshToken(refreshToken);
-
-    const activeTokens = await this.prismaService.refreshToken.findMany({
-      where: {
-        userId: refreshPayload.sub,
-        revokedAt: null,
-        expiresAt: {
-          gt: new Date()
-        }
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 20
-    });
-
-    let matchedTokenId: string | null = null;
-
-    for (const tokenRecord of activeTokens) {
-      const isMatch = await this.passwordHashingService.verify(tokenRecord.tokenHash, refreshToken);
-      if (isMatch) {
-        matchedTokenId = tokenRecord.id;
-        break;
-      }
-    }
-
-    if (!matchedTokenId) {
-      throw new UnauthorizedException("Refresh token is invalid");
-    }
+    const matchedTokenId = await this.findMatchingActiveTokenId(refreshPayload.sub, refreshToken);
 
     await this.prismaService.refreshToken.update({
       where: { id: matchedTokenId },
@@ -80,31 +53,7 @@ export class AuthRefreshTokenService {
 
   async logoutSingleSession(refreshToken: string) {
     const refreshPayload = this.authJwtService.verifyRefreshToken(refreshToken);
-
-    const activeTokens = await this.prismaService.refreshToken.findMany({
-      where: {
-        userId: refreshPayload.sub,
-        revokedAt: null
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 20
-    });
-
-    let matchedTokenId: string | null = null;
-
-    for (const tokenRecord of activeTokens) {
-      const isMatch = await this.passwordHashingService.verify(tokenRecord.tokenHash, refreshToken);
-      if (isMatch) {
-        matchedTokenId = tokenRecord.id;
-        break;
-      }
-    }
-
-    if (!matchedTokenId) {
-      throw new UnauthorizedException("Refresh token is invalid");
-    }
+    const matchedTokenId = await this.findMatchingActiveTokenId(refreshPayload.sub, refreshToken);
 
     await this.prismaService.refreshToken.update({
       where: { id: matchedTokenId },
@@ -118,11 +67,15 @@ export class AuthRefreshTokenService {
 
   async logoutAllSessions(refreshToken: string) {
     const refreshPayload = this.authJwtService.verifyRefreshToken(refreshToken);
+    await this.findMatchingActiveTokenId(refreshPayload.sub, refreshToken);
 
     const result = await this.prismaService.refreshToken.updateMany({
       where: {
         userId: refreshPayload.sub,
-        revokedAt: null
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date()
+        }
       },
       data: {
         revokedAt: new Date()
@@ -133,5 +86,30 @@ export class AuthRefreshTokenService {
       success: true,
       revokedCount: result.count
     };
+  }
+
+  private async findMatchingActiveTokenId(userId: string, refreshToken: string) {
+    const activeTokens = await this.prismaService.refreshToken.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date()
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 50
+    });
+
+    for (const tokenRecord of activeTokens) {
+      const isMatch = await this.passwordHashingService.verify(tokenRecord.tokenHash, refreshToken);
+      if (isMatch) {
+        return tokenRecord.id;
+      }
+    }
+
+    throw new UnauthorizedException("Refresh token is invalid or expired");
   }
 }

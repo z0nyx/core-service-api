@@ -146,12 +146,16 @@ class InMemoryPrisma {
       where,
       data
     }: {
-      where: { userId: string; revokedAt: null };
+      where: { userId: string; revokedAt: null; expiresAt?: { gt: Date } };
       data: { revokedAt: Date };
     }) => {
       let count = 0;
       this.tokens.forEach((token) => {
-        if (token.userId === where.userId && token.revokedAt === null) {
+        if (
+          token.userId === where.userId &&
+          token.revokedAt === null &&
+          (!where.expiresAt?.gt || token.expiresAt > where.expiresAt.gt)
+        ) {
           token.revokedAt = data.revokedAt;
           token.updatedAt = new Date();
           count += 1;
@@ -311,5 +315,29 @@ describe("Auth flows (e2e)", () => {
       .post("/api/auth/login")
       .send({ email, password: "valid_password_123" })
       .expect(429);
+  });
+
+  it("rejects invalid access token on verify", async () => {
+    await request(app.getHttpServer())
+      .post("/api/auth/token/verify")
+      .send({ token: "invalid.token.value" })
+      .expect(401);
+  });
+
+  it("rejects invalid refresh token for refresh/logout flows", async () => {
+    await request(app.getHttpServer())
+      .post("/api/auth/token/refresh")
+      .send({ refreshToken: "invalid.token.value" })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post("/api/auth/token/logout")
+      .send({ refreshToken: "invalid.token.value" })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post("/api/auth/token/logout-all")
+      .send({ refreshToken: "invalid.token.value" })
+      .expect(401);
   });
 });
