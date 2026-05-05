@@ -20,7 +20,7 @@ export class UsersService {
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
     const where: Prisma.UserWhereInput = {
-      ...(typeof query.isActive === "boolean" ? { isActive: query.isActive } : {}),
+      isActive: typeof query.isActive === "boolean" ? query.isActive : true,
       ...(search
         ? {
             OR: [
@@ -81,10 +81,22 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const user = await this.findOne(id);
+    if (!user.isActive) {
+      return {
+        success: true
+      };
+    }
 
-    return this.prismaService.user.delete({
-      where: { id }
+    await this.prismaService.user.update({
+      where: { id },
+      data: {
+        isActive: false
+      }
     });
+
+    return {
+      success: true
+    };
   }
 }
