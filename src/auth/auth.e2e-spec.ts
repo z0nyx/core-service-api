@@ -1,8 +1,9 @@
 import "reflect-metadata";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AppModule } from "../app.module";
+import { createGlobalValidationPipe } from "../common/validation.pipe";
 import { PrismaService } from "../prisma.service";
 import { REDIS_CLIENT } from "../redis.provider";
 
@@ -211,12 +212,7 @@ describe("Auth flows (e2e)", () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix("api");
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        transform: true
-      })
-    );
+    app.useGlobalPipes(createGlobalValidationPipe());
 
     await app.init();
 
@@ -385,3 +381,4 @@ describe("Auth flows (e2e)", () => {
       .expect(401);
   });
 });
+

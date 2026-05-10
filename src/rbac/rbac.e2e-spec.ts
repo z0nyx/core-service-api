@@ -1,8 +1,9 @@
 import "reflect-metadata";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AppModule } from "../app.module";
+import { createGlobalValidationPipe } from "../common/validation.pipe";
 import { PrismaService } from "../prisma.service";
 import { REDIS_CLIENT } from "../redis.provider";
 
@@ -182,12 +183,7 @@ describe("RBAC role restrictions (e2e)", () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix("api");
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        transform: true
-      })
-    );
+    app.useGlobalPipes(createGlobalValidationPipe());
 
     await app.init();
 
@@ -257,4 +253,13 @@ describe("RBAC role restrictions (e2e)", () => {
     expect(response.body.accessToken).toBeDefined();
     expect(response.body.refreshToken).toBeDefined();
   });
+
+  it("rejects unknown properties in request body via global validation pipe", async () => {
+    await request(app.getHttpServer())
+      .post("/api/auth/token/issue")
+      .set("Authorization", `Bearer ${adminAccessToken}`)
+      .send({ email: "test@example.com", userId: "test-user", unexpectedField: "blocked" })
+      .expect(400);
+  });
 });
+
