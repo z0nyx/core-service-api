@@ -80,10 +80,28 @@ class InMemoryRedis {
 class InMemoryPrisma {
   private tokens: TokenRecord[] = [];
   private idCounter = 1;
+  private users = [
+    { id: "admin-id", email: "admin@example.com", isActive: true },
+    { id: "user-id", email: "user@example.com", isActive: true }
+  ];
+
+  user = {
+    findFirst: async ({ where }: { where: { isActive: boolean; OR: Array<{ id?: string; email?: string }> } }) => {
+      if (!where.isActive) {
+        return null;
+      }
+
+      return (
+        this.users.find((user) =>
+          where.OR.some((condition) => (condition.id ? user.id === condition.id : user.email === condition.email))
+        ) ?? null
+      );
+    }
+  };
 
   userRole = {
     findMany: async ({ where }: { where: { userId: string } }) => {
-      if (where.userId === "admin@example.com") {
+      if (where.userId === "admin-id") {
         return [{ role: { code: "admin" } }];
       }
       return [{ role: { code: "user" } }];

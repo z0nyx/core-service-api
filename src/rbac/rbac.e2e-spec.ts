@@ -96,6 +96,22 @@ class InMemoryPrisma {
     findUnique: async ({ where }: { where: { id: string } }) => {
       return this.users.find((user) => user.id === where.id) ?? null;
     },
+    findFirst: async ({
+      where
+    }: {
+      where: { isActive: boolean; OR: Array<{ id?: string; email?: string }> };
+    }) => {
+      if (!where.isActive) {
+        return null;
+      }
+      return (
+        this.users.find(
+          (user) =>
+            user.isActive &&
+            where.OR.some((condition) => (condition.id ? user.id === condition.id : user.email === condition.email))
+        ) ?? null
+      );
+    },
 
     update: async ({ where, data }: { where: { id: string }; data: Partial<UserRecord> }) => {
       const user = this.users.find((item) => item.id === where.id);
@@ -109,7 +125,8 @@ class InMemoryPrisma {
 
   userRole = {
     findMany: async ({ where }: { where: { userId: string } }) => {
-      if (where.userId === "admin@example.com") {
+      const target = this.users.find((user) => user.id === where.userId);
+      if (target?.email === "admin@example.com") {
         return [{ role: { code: "admin" } }];
       }
       return [{ role: { code: "user" } }];

@@ -32,11 +32,11 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractBearerToken(request);
     const tokenPayload = this.authJwtService.verifyToken(token);
-
-    const roles = await this.loadUserRoleCodes(tokenPayload.sub);
+    const user = await this.resolveActiveUser(tokenPayload.sub, tokenPayload.email);
+    const roles = await this.loadUserRoleCodes(user.id);
     request.user = {
-      id: tokenPayload.sub,
-      email: tokenPayload.email,
+      id: user.id,
+      email: user.email,
       roles
     };
 
@@ -45,6 +45,38 @@ export class RolesGuard implements CanActivate {
     }
 
     throw new ForbiddenException("Insufficient role");
+  }
+
+  private async resolveActiveUser(sub: string, email: string): Promise<{ id: string; email: string }> {
+    const normalizedSub = sub.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        isActive: true,
+        OR: [{ id: normalizedSub }, { email: normalizedEmail }]
+      },
+      select: {
+        id: true,
+        email: true
+      }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("User is not found or inactive");
+    }
+
+    const isLegacySubject = normalizedSub.toLowerCase() === normalizedEmail;
+    const isCanonicalSubject = normalizedSub === user.id;
+    if (!isLegacySubject && !isCanonicalSubject) {
+      throw new UnauthorizedException("Token subject does not match user identity");
+    }
+
+    if (user.email.toLowerCase() !== normalizedEmail) {
+      throw new UnauthorizedException("Token email does not match user identity");
+    }
+
+    return user;
   }
 
   private extractBearerToken(request: Request): string {

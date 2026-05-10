@@ -14,6 +14,9 @@ describe("RolesGuard", () => {
   } as unknown as AuthJwtService;
 
   const prismaService = {
+    user: {
+      findFirst: jest.fn()
+    },
     userRole: {
       findMany: jest.fn()
     }
@@ -57,6 +60,10 @@ describe("RolesGuard", () => {
       sub: "user-1",
       email: "admin@example.com"
     });
+    (prismaService.user.findFirst as jest.Mock).mockResolvedValue({
+      id: "user-1",
+      email: "admin@example.com"
+    });
     (prismaService.userRole.findMany as jest.Mock).mockResolvedValue([
       {
         role: {
@@ -74,6 +81,10 @@ describe("RolesGuard", () => {
       sub: "user-2",
       email: "user@example.com"
     });
+    (prismaService.user.findFirst as jest.Mock).mockResolvedValue({
+      id: "user-2",
+      email: "user@example.com"
+    });
     (prismaService.userRole.findMany as jest.Mock).mockResolvedValue([
       {
         role: {
@@ -83,5 +94,19 @@ describe("RolesGuard", () => {
     ]);
 
     await expect(guard.canActivate(createContext("Bearer token.value"))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("throws unauthorized when token identity does not match active user", async () => {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue(["admin"]);
+    (authJwtService.verifyToken as jest.Mock).mockReturnValue({
+      sub: "intruder-id",
+      email: "user@example.com"
+    });
+    (prismaService.user.findFirst as jest.Mock).mockResolvedValue({
+      id: "another-id",
+      email: "user@example.com"
+    });
+
+    await expect(guard.canActivate(createContext("Bearer token.value"))).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
