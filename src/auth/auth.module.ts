@@ -1,6 +1,7 @@
-﻿import { Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { redisProvider } from "../redis.provider";
 import { PrismaService } from "../prisma.service";
+import { RolesGuard } from "../rbac/roles.guard";
 import { AuthController } from "./auth.controller";
 import { AuthJwtService } from "./auth-jwt.service";
 import { AuthRefreshTokenService } from "./auth-refresh-token.service";
@@ -15,7 +16,8 @@ import { PasswordHashingService } from "./password-hashing.service";
     PasswordHashingService,
     AuthJwtService,
     AuthRefreshTokenService,
-    AuthSecurityService
+    AuthSecurityService,
+    RolesGuard
   ],
   exports: [PasswordHashingService, AuthJwtService, AuthRefreshTokenService, AuthSecurityService]
 })

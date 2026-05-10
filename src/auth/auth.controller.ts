@@ -1,6 +1,8 @@
-﻿import { Body, Controller, Get, Inject, Post, UnauthorizedException } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import type Redis from "ioredis";
+import { Roles } from "../rbac/roles.decorator";
+import { RolesGuard } from "../rbac/roles.guard";
 import { REDIS_CLIENT } from "../redis.provider";
 import { AuthJwtService } from "./auth-jwt.service";
 import { AuthRefreshTokenService } from "./auth-refresh-token.service";
@@ -74,6 +76,8 @@ export class AuthController {
   }
 
   @Post("token/issue")
+  @UseGuards(RolesGuard)
+  @Roles("admin")
   issueToken(@Body() body: IssueTokenDto) {
     return this.authRefreshTokenService.issueTokenPair({
       sub: body.userId ?? body.email,

@@ -1,4 +1,4 @@
-﻿# Core Backend API
+# Core Backend API
 
 A basic starter template for a backend API built with `NestJS`, including:
 - PostgreSQL + Prisma
@@ -38,7 +38,7 @@ Base path: `/api/auth`
     - `accessToken`
     - `refreshToken`
 
-- `POST /token/issue`
+- `POST /token/issue` (admin only, requires `Authorization: Bearer <accessToken>`)
   - Body:
     - `email` (valid email)
     - `userId` (optional string, min `2`)
@@ -74,7 +74,7 @@ Base path: `/api/auth`
 
 ## Users Endpoints
 
-Base path: `/api/users`
+Base path: `/api/users` (admin only, requires `Authorization: Bearer <accessToken>`)
 
 - `POST /`
   - Body:
@@ -131,3 +131,5 @@ Services:
 npm run prisma:migrate
 npm run prisma:generate
 ```
+
+

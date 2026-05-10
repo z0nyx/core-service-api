@@ -1,4 +1,4 @@
-﻿import "reflect-metadata";
+import "reflect-metadata";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -80,6 +80,15 @@ class InMemoryRedis {
 class InMemoryPrisma {
   private tokens: TokenRecord[] = [];
   private idCounter = 1;
+
+  userRole = {
+    findMany: async ({ where }: { where: { userId: string } }) => {
+      if (where.userId === "admin@example.com") {
+        return [{ role: { code: "admin" } }];
+      }
+      return [{ role: { code: "user" } }];
+    }
+  };
 
   refreshToken = {
     create: async ({ data }: { data: { userId: string; tokenHash: string; expiresAt: Date } }) => {
@@ -168,6 +177,7 @@ class InMemoryPrisma {
 
 describe("Auth flows (e2e)", () => {
   let app: INestApplication;
+  let adminAccessToken: string;
   const redis = new InMemoryRedis();
   const prisma = new InMemoryPrisma();
 
@@ -191,6 +201,18 @@ describe("Auth flows (e2e)", () => {
     );
 
     await app.init();
+
+    await request(app.getHttpServer())
+      .post("/api/auth/register")
+      .send({ email: "admin@example.com", password: "admin_password_123", name: "Admin" })
+      .expect(201);
+
+    const adminLoginResponse = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ email: "admin@example.com", password: "admin_password_123" })
+      .expect(201);
+
+    adminAccessToken = adminLoginResponse.body.accessToken;
   });
 
   afterAll(async () => {
@@ -225,6 +247,7 @@ describe("Auth flows (e2e)", () => {
   it("refresh rotates token and invalidates previous refresh token", async () => {
     const issueResponse = await request(app.getHttpServer())
       .post("/api/auth/token/issue")
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ email: "rotate@example.com", userId: "rotate-user" })
       .expect(201);
 
@@ -247,6 +270,7 @@ describe("Auth flows (e2e)", () => {
   it("logout revokes single session", async () => {
     const issueResponse = await request(app.getHttpServer())
       .post("/api/auth/token/issue")
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ email: "logout@example.com", userId: "logout-user" })
       .expect(201);
 
@@ -268,11 +292,13 @@ describe("Auth flows (e2e)", () => {
   it("logout-all revokes all active sessions", async () => {
     const first = await request(app.getHttpServer())
       .post("/api/auth/token/issue")
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ email: "all@example.com", userId: "all-user" })
       .expect(201);
 
     const second = await request(app.getHttpServer())
       .post("/api/auth/token/issue")
+      .set("Authorization", `Bearer ${adminAccessToken}`)
       .send({ email: "all@example.com", userId: "all-user" })
       .expect(201);
 
