@@ -1,10 +1,14 @@
-﻿import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Roles } from "../rbac/roles.decorator";
+import { RolesGuard } from "../rbac/roles.guard";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { FindUsersQueryDto } from "./dto/find-users-query.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UsersService } from "./users.service";
 
 @Controller("users")
+@UseGuards(RolesGuard)
+@Roles("admin")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
